@@ -32,3 +32,9 @@ variable "image_tags" {
     worker = "latest"
   }
 }
+
+variable "alert_email" {
+  description = "Email that receives CloudWatch alarm notifications (empty = no subscription)"
+  type        = string
+  default     = ""
+}
