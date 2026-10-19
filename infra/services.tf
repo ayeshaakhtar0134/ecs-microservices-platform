@@ -21,6 +21,7 @@ module "service_api" {
 
   environment = {
     WORKER_URL = "http://worker.${aws_service_discovery_private_dns_namespace.this.name}:8000"
+    QUEUE_URL  = aws_sqs_queue.jobs.url
   }
 
   load_balancer = {
@@ -48,4 +49,8 @@ module "service_worker" {
   ingress_sg_ids     = [module.service_api.security_group_id]
   use_fargate_spot   = true
   log_retention_days = 14
+
+  environment = {
+    QUEUE_URL = aws_sqs_queue.jobs.url
+  }
 }
