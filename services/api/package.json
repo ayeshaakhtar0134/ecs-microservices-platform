@@ -8,6 +8,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "@aws-sdk/client-sqs": "^3.687.0"
   }
 }

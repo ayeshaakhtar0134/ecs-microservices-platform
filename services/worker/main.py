@@ -1,8 +1,29 @@
+import logging
+import os
+import threading
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-app = FastAPI(title="worker")
+from consumer import process_job, start_consumer
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    # In AWS, QUEUE_URL is set and jobs arrive through SQS.
+    # Locally it isn't, and the api calls POST /jobs directly.
+    stop = threading.Event()
+    queue_url = os.environ.get("QUEUE_URL")
+    if queue_url:
+        start_consumer(queue_url, stop)
+    yield
+    stop.set()
+
+
+app = FastAPI(title="worker", lifespan=lifespan)
 
 
 @app.get("/health")
@@ -12,5 +33,4 @@ def health():
 
 @app.post("/jobs")
 def create_job(payload: dict):
-    # Real work (S3, SQS, DB) would go here using the ECS task role
-    return {"job_id": str(uuid.uuid4()), "status": "queued", "input": payload}
+    return process_job({"jobId": str(uuid.uuid4()), "payload": payload})

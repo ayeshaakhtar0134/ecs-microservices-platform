@@ -1,24 +1,23 @@
 const express = require("express");
+const { createJobSender } = require("./jobs");
 
-const WORKER_URL = process.env.WORKER_URL || "http://localhost:8000";
+function createApp({ sendJob = createJobSender() } = {}) {
+  const app = express();
+  app.use(express.json());
 
-const app = express();
-app.use(express.json());
+  app.get("/health", (_req, res) => res.json({ status: "ok", service: "api" }));
 
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "api" }));
+  app.post("/api/jobs", async (req, res) => {
+    try {
+      const { status, body } = await sendJob(req.body ?? {});
+      res.status(status).json(body);
+    } catch (err) {
+      console.error(JSON.stringify({ level: "error", msg: "job submit failed", error: err.message }));
+      res.status(502).json({ error: "could not submit job" });
+    }
+  });
 
-// Calls the worker service over Cloud Map DNS (worker.dev.internal)
-app.post("/api/jobs", async (req, res) => {
-  try {
-    const r = await fetch(`${WORKER_URL}/jobs`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(req.body ?? {}),
-    });
-    res.status(r.status).json(await r.json());
-  } catch (err) {
-    res.status(502).json({ error: "worker unavailable", detail: err.message });
-  }
-});
+  return app;
+}
 
-module.exports = app;
+module.exports = { createApp };

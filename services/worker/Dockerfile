@@ -7,7 +7,7 @@ FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY --from=build /install /usr/local
-COPY main.py .
+COPY main.py consumer.py ./
 RUN useradd --uid 10001 app
 USER app
 EXPOSE 8000
