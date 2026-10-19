@@ -1,0 +1,11 @@
+# Run both services locally: docker compose up --build
+services:
+  api:
+    build: ./services/api
+    ports: ["3000:3000"]
+    environment:
+      WORKER_URL: http://worker:8000
+    depends_on: [worker]
+  worker:
+    build: ./services/worker
+    ports: ["8000:8000"]

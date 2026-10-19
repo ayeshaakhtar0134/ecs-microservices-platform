@@ -1,0 +1,116 @@
+# Reusable pipeline every service calls: test -> build -> scan -> push to ECR -> deploy to ECS.
+name: service-pipeline
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Folder name under services/ (also the ECS service and container name)
+        required: true
+        type: string
+      language:
+        description: node or python
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT: ecs-platform
+  ENVIRONMENT: dev
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/${{ inputs.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - if: inputs.language == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - if: inputs.language == 'node'
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+
+      - if: inputs.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - if: inputs.language == 'python'
+        run: |
+          pip install -r requirements-dev.txt
+          pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t ${{ inputs.service }}:${{ github.sha }} services/${{ inputs.service }}
+
+      - name: Scan image for HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ inputs.service }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0" # report only; set to "1" to block deploys
+
+  # Runs only on main, and only once the AWS role exists (see README step 3)
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    environment: dev
+    concurrency: deploy-${{ inputs.service }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC, no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        id: image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.PROJECT }}-${{ env.ENVIRONMENT }}/${{ inputs.service }}:${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE" services/${{ inputs.service }}
+          docker push "$IMAGE"
+          echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.PROJECT }}-${{ env.ENVIRONMENT }}-${{ inputs.service }} \
+            --query taskDefinition > task-def.json
+
+      - id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name: ${{ inputs.service }}
+          image: ${{ steps.image.outputs.uri }}
+
+      - name: Deploy to ECS and wait for it to be stable
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          cluster: ${{ env.PROJECT }}-${{ env.ENVIRONMENT }}
+          service: ${{ inputs.service }}
+          wait-for-service-stability: true

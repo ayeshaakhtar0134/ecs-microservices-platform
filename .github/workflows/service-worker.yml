@@ -1,0 +1,24 @@
+name: service-worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/worker/**"
+      - ".github/workflows/service-worker.yml"
+      - ".github/workflows/_service-pipeline.yml"
+  pull_request:
+    paths:
+      - "services/worker/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: worker
+      language: python

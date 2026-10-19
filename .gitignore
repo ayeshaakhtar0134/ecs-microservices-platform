@@ -1,0 +1,14 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!example.tfvars
+override.tf
+override.tf.json
+*_override.tf
+.terraform.tfstate.lock.info
+.env
+node_modules/
+__pycache__/
+.pytest_cache/

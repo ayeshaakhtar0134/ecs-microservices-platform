@@ -1,0 +1,24 @@
+name: service-api
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/api/**"
+      - ".github/workflows/service-api.yml"
+      - ".github/workflows/_service-pipeline.yml"
+  pull_request:
+    paths:
+      - "services/api/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: api
+      language: node
