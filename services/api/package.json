@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "express": "^4.21.1",
-    "@aws-sdk/client-sqs": "^3.687.0"
+    "@aws-sdk/client-sqs": "^3.1161.0"
   }
 }
