@@ -13,3 +13,7 @@ output "private_subnet_ids" {
 output "nat_gateway_ids" {
   value = aws_nat_gateway.this[*].id
 }
+
+output "flow_log_group_name" {
+  value = var.enable_flow_logs ? aws_cloudwatch_log_group.flow_logs[0].name : null
+}

@@ -32,7 +32,7 @@ Export a proper diagram to `docs/architecture.png` (draw.io or Excalidraw) and l
 
 | Area | Details |
 |------|---------|
-| **Networking** | VPC module (from [aws-terraform-foundation](https://github.com/ayeshaakhtar0134/aws-terraform-foundation)), public/private subnets in 2 AZs, NAT |
+| **Networking** | VPC module (from [aws-terraform-foundation](https://github.com/ayeshaakhtar0134/aws-terraform-foundation)), public/private subnets in 2 AZs, NAT, VPC flow logs |
 | **Compute** | ECS cluster with Fargate + Fargate Spot, Container Insights |
 | **Reusable service module** | `infra/modules/ecs-service`: task definition, service, security group, IAM execution + task roles, log group, Cloud Map DNS, optional ALB routing, CPU autoscaling, circuit-breaker rollback |
 | **Images** | ECR per service, immutable tags, scan on push, lifecycle policy |
